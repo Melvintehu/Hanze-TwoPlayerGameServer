@@ -27,13 +27,15 @@ public class Tournament {
 	private ArrayList<KeyValuePair<Client, Client>> roundList;
 	private HashMap<KeyValuePair<Client, Client>, KeyValuePair<Integer, Integer>> results;
 	private Match currentMatch;
-	
-	public Tournament(ClientManager clientManager, String gameType, ArrayList<Client> players) {
+	private int turntime;
+
+	public Tournament(String gameType, ArrayList<Client> players, int turntime) {
+		this.turntime = turntime;
 		this.gameType = gameType;
 		this.players = players;
-		listenerList = new ArrayList<ActionListener>();
+		listenerList = new ArrayList<>();
 		
-		results = new HashMap<KeyValuePair<Client, Client>, KeyValuePair<Integer, Integer>>();
+		results = new HashMap<>();
 		fillRoundList();
 	}
 	
@@ -49,7 +51,7 @@ public class Tournament {
 		}
 		
 		KeyValuePair<Client, Client> round = currentRound();
-		currentMatch = Application.getInstance().getGameServer().getClientManager().createMatch(gameType, round.getKey(), round.getValue());
+		currentMatch = Application.getInstance().getGameServer().getClientManager().createMatch(gameType, round.getKey(), round.getValue(), turntime);
 		
 		notifyListeners(ACTION_NEXT_ROUND);
 		
@@ -88,7 +90,7 @@ public class Tournament {
 			}
 		}
 		
-		return new KeyValuePair<Integer, Integer>(playerOneResults, playerTwoResults);
+		return new KeyValuePair<>(playerOneResults, playerTwoResults);
 	}
 	
 	public void onMatchFinished() {
@@ -98,7 +100,7 @@ public class Tournament {
 		int playerOneResult = currentMatch.getPlayerResult(round.getKey());
 		int playerTwoResult = currentMatch.getPlayerResult(round.getValue());
 		
-		KeyValuePair<Integer, Integer> result = new KeyValuePair<Integer, Integer>(playerOneResult, playerTwoResult);
+		KeyValuePair<Integer, Integer> result = new KeyValuePair<>(playerOneResult, playerTwoResult);
 		results.put(round, result);
 		
 		checkDisconnectedClients();
@@ -111,13 +113,13 @@ public class Tournament {
 		}
 		
 		// Get list of disconnected players
-		ArrayList<Client> disconnectedList = new ArrayList<Client>();
+		ArrayList<Client> disconnectedList = new ArrayList<>();
 		for(Client client : players) {
 			if(!client.isLoggedIn()) {
 				disconnectedList.add(client);
 			}
 		}
-		
+
 		// Remove disconnected players
 		for(Client client : disconnectedList) {
 			// Remove disconnected players from round list
@@ -154,20 +156,20 @@ public class Tournament {
 	}
 	
 	private void fillRoundList() {
-		roundList = new ArrayList<KeyValuePair<Client, Client>>();
+		roundList = new ArrayList<>();
 		
-		ArrayList<Client> remainingPlayers = new ArrayList<Client>(players);
+		ArrayList<Client> remainingPlayers = new ArrayList<>(players);
 		
 		for(Client player : players) {
 			remainingPlayers.remove(player);
 			
 			for(Client opponent : remainingPlayers) {
-				ArrayList<Client> roundPlayers = new ArrayList<Client>(2);
+				ArrayList<Client> roundPlayers = new ArrayList<>(2);
 				roundPlayers.add(player);
 				roundPlayers.add(opponent);
 				Collections.shuffle(roundPlayers);
 				
-				KeyValuePair<Client, Client> round = new KeyValuePair<Client, Client>(roundPlayers.get(0), roundPlayers.get(1));
+				KeyValuePair<Client, Client> round = new KeyValuePair<>(roundPlayers.get(0), roundPlayers.get(1));
 				roundList.add(round);
 			}
 		}

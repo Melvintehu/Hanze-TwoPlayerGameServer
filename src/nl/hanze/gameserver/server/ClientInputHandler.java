@@ -1,5 +1,6 @@
 package nl.hanze.gameserver.server;
 
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,6 +10,7 @@ import nl.hanze.gameserver.app.Application;
 import nl.hanze.gameserver.server.command.CommandHandlerResolver;
 import nl.hanze.gameserver.server.command.ICommandHandler;
 import nl.hanze.gameserver.server.message.Command;
+import nl.hanze.gameserver.server.message.ErrorResponse;
 import nl.hanze.gameserver.util.ByteUtils;
 import nl.hanze.gameserver.util.KeyValuePair;
 import nl.hanze.gameserver.util.Log;
@@ -34,8 +36,8 @@ public class ClientInputHandler implements Runnable {
 	private boolean running;
 	
 	public ClientInputHandler(CommandHandlerResolver commandHandlerResolver) {
-		readyQueue = new LinkedBlockingQueue<KeyValuePair<Client, byte[]>>();
-		clientInputBufferMap = new HashMap<Client, ByteBuffer>();
+		readyQueue = new LinkedBlockingQueue<>();
+		clientInputBufferMap = new HashMap<>();
 		
 		this.commandHandlerResolver = commandHandlerResolver;
 		
@@ -64,7 +66,14 @@ public class ClientInputHandler implements Runnable {
 				
 				// Get client input buffer and add data
 				ByteBuffer inputBuffer = getInputBuffer(client);
-				inputBuffer.put(data);
+				try {
+					inputBuffer.put(data);
+				}
+				catch (BufferOverflowException bf) {
+					client.writeResponse(new ErrorResponse("Payload too large"));
+					client.disconnect();
+					continue;
+				}
 				inputBuffer.flip();
 				
 				// Read and remove commands from client input buffer
@@ -88,13 +97,13 @@ public class ClientInputHandler implements Runnable {
 				}
 				
 			} catch (InterruptedException e) {
-				;
+				e.printStackTrace();
 			}
 		}
 	}
 	
 	private ArrayList<Command> readCommands(ByteBuffer buffer) {
-		ArrayList<Command> commandList = new ArrayList<Command>();
+		ArrayList<Command> commandList = new ArrayList<>();
 		
 		String line;
 		while((line = ByteUtils.readLine(buffer)) != null) {
@@ -121,7 +130,7 @@ public class ClientInputHandler implements Runnable {
 	}
 	
 	public void addData(Client client, byte[] data) {
-		readyQueue.add(new KeyValuePair<Client, byte[]>(client, data));
+		readyQueue.add(new KeyValuePair<>(client, data));
 	}
 	
 	public CommandHandlerResolver getCommandHandlerResolver() {
